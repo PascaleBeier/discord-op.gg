@@ -8,23 +8,30 @@ const btnSpectate = "a.SpectateTabButton";
 const frameSpectate = "div.SpectateSummoner";
 let channel = null;
 
-formatCommand = async message => {
-    const args = message.content.split(commandDelimiter);
-    if (!args || args.length < 2) {
-        return channel.send(
-            `Usage: ${commandPrefix} ${commandDelimiter}${message.author
-                .username}${commandDelimiter}`
-        );
+formatCommand = async (data, isSummoner = false) => {
+    let summoner = void 0;
+
+    if (!isSummoner) {
+        let args = data.content.split(commandDelimiter);
+        if (!args || args.length < 2) {
+            return channel.send(
+                `Usage: ${commandPrefix} ${commandDelimiter}${data.author
+                    .username}${commandDelimiter}`
+            );
+        }
+        summoner = args[1];
+    } else {
+        summoner = data;
     }
+
     channel.send("Hold on ...");
-    let screenshot = await lookup(args[1]);
-    return channel.send({ files: [{ attachment: screenshot, name: "op.gg.png" }] });
+    return channel.send({ files: [{ attachment: await lookup(summoner), name: "op.gg.png" }] });
 };
 
 lookup = async (summoner) => {
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
-    await page.goto(`http://euw.op.gg/summoner/userName=${encodeURI(summoner)}`, {waitUntil: 'networkidle2'});
+    await page.goto(`http://euw.op.gg/summoner/userName=${encodeURI(summoner)}`);
     await page.$(btnSpectate);
     await Promise.all([
         page.waitForSelector(frameSpectate),
@@ -41,9 +48,6 @@ lookup = async (summoner) => {
 };
 
 client.on("ready", () => {
-     if (!client.user.avatarURL) {
-         let setAvatar = client.user.setAvatar("./avatar.png");
-    }
     channel = client.channels.find("name", "bot-proving-grounds");
 });
 
@@ -58,7 +62,6 @@ client.on("presenceUpdate", async (oldMember, newMember) => {
         newMember.presence.game !== null &&
         newMember.presence.game.name === "League of Legends"
     ) {
-        console.log(newMember.presence.game);
         return formatCommand(`${commandPrefix} ${newMember.displayName}`);
     }
 });
